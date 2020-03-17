@@ -1,0 +1,81 @@
+import CSDL2
+import SDL
+
+struct SwiftSDL2Testt {
+    var text = "Hello, World!"
+}
+
+print("WOW")
+
+SDL_Init(SDL_INIT_VIDEO);
+
+let window = SDL_CreateWindow( 
+    "An SDL2 window",         //    const char* title
+    0,  //    int x: initial x position
+    0,  //    int y: initial y position
+    640,                      //    int w: width, in pixels
+    480,                      //    int h: height, in pixels
+    0          //    Uint32 flags: window options, see docs
+  )
+
+
+/*
+extension SDL_RendererFlags: BinaryInteger {
+    public init?<T>(exactly source: T) where T : BinaryInteger {
+        <#code#>
+    }
+
+    public var magnitude: Int {
+        <#code#>
+    }
+
+    public static func * (lhs: SDL_RendererFlags, rhs: SDL_RendererFlags) -> SDL_RendererFlags {
+        <#code#>
+    }
+
+    public static func *= (lhs: inout SDL_RendererFlags, rhs: SDL_RendererFlags) {
+        <#code#>
+    }
+
+    public init(integerLiteral value: Int) {
+        <#code#>
+    }
+
+    public typealias Words = Int
+
+    public typealias Magnitude = Int
+
+    public typealias IntegerLiteralType = Int
+}*/
+
+protocol Test {
+}
+struct Test1: Test {
+  init(test: Int) {
+    print(test)
+  }
+}
+
+/*prefix operator *
+prefix func *<T: AnyObject> (lhs: inout T) -> UnsafePointer<T> {
+  return UnsafePointer<T>(&lhs)/*withUnsafePointer(to: lhs) { ptr in
+    return ptr
+  }*/
+}*/
+
+var renderer = SDL_CreateRenderer(OpaquePointer(UnsafePointer(window))!, -1, SDL_RENDERER_ACCELERATED.rawValue | SDL_RENDERER_PRESENTVSYNC.rawValue)
+
+SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255)
+
+SDL_RenderClear(renderer)
+
+SDL_SetRenderDrawColor(renderer, 0, 0, 255, 100)
+
+let rect = withUnsafePointer(to: SDL_Rect.init(x: 0, y: 0, w: 30, h: 30)) { rect in
+  let result = SDL_RenderDrawRect(renderer, rect)
+  print("RENDER RECT RESULT", result)
+} //body: (UnsafePointer<T>) throws -> Result)
+
+SDL_RenderPresent(renderer)
+
+SDL_Delay(4000)
