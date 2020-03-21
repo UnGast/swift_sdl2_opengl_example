@@ -31,18 +31,12 @@ if renderDrivers.isEmpty == false {
 
 let vertexShaderSource = """
 #version 330 core
+
 layout (location = 0) in vec3 aPos;
-
-const vec3[] vertices = vec3[](
-    vec3(-0.5, -0.5, 0.0),
-    vec3(0.5, -0.5, 0.0),
-    vec3(0.0,  0.5, 0.0)
-);
-
 
 void main()
 {
-    gl_Position = vec4(vertices[gl_VertexID], 1.0);
+    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
 }
 """
 
@@ -97,8 +91,8 @@ func main() throws {
     withUnsafePointer(to: vertexShaderSource) { ptr in glShaderSource(vertexShader, 1, ptr, nil) }
     glCompileShader(vertexShader)
 
-    var success = UnsafeMutablePointer<GL.Int>.allocate(capacity: MemoryLayout<GL.Int>.size)
-    var info = UnsafeMutablePointer<GL.Char>.allocate(capacity: MemoryLayout<GL.Char>.size * 512)
+    var success = UnsafeMutablePointer<GL.Int>.allocate(capacity: 1)
+    var info = UnsafeMutablePointer<GL.Char>.allocate(capacity: 512)
     glGetShaderiv(vertexShader, GL.COMPILE_STATUS, success)
     if (success.pointee == 0) {
         glGetShaderInfoLog(vertexShader, 512, nil, info)
@@ -157,15 +151,15 @@ func main() throws {
     var VAO = GL.UInt()
     withUnsafeMutablePointer(to: &VAO) { ptr in glGenVertexArrays(1, ptr) }
     var VBO = GL.UInt()
-    withUnsafeMutablePointer(to: &VBO) { ptr in glGenBuffers(GL.Size(1), ptr) }
+    withUnsafeMutablePointer(to: &VBO) { ptr in glGenBuffers(1, ptr) }
 
     glBindVertexArray(VAO)
 
     glBindBuffer(GL.ARRAY_BUFFER, VBO)
-    glBufferData(GL.ARRAY_BUFFER, MemoryLayout.size(ofValue: vertices), vertices, GL.STATIC_DRAW)
+    glBufferData(GL.ARRAY_BUFFER, vertices.count * MemoryLayout<Float>.stride, vertices, GL.STATIC_DRAW)
 
-    var void = UnsafeRawPointer.init(bitPattern: 0)
-    glVertexAttribPointer(index: GL.UInt(0), size: GL.Int(3), type: GL.FLOAT, normalized: GL.Bool(false), stride: GL.Size(3 * MemoryLayout<Float>.size), pointer: void)
+    let offset = UnsafeRawPointer.init(bitPattern: 0)
+    glVertexAttribPointer(index: GL.UInt(0), size: GL.Int(3), type: GL.FLOAT, normalized: GL.Bool(false), stride: GL.Size(3 * MemoryLayout<GL.Float>.stride), pointer: offset)
     // glVertexAttribPointer(index: GL.UInt, size: GL.Int, type: GL.Enum, normalized: GL.Bool, stride: GL.Size, pointer: UnsafeRawPointer?)
     glEnableVertexAttribArray(0)
 
