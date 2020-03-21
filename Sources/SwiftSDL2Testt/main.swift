@@ -29,37 +29,61 @@ if renderDrivers.isEmpty == false {
     }
 }*/
 
+struct Vertex {
+    let x: GL.Float
+    let y: GL.Float
+    let z: GL.Float
+    let r: GL.Float
+    let g: GL.Float
+    let b: GL.Float
+    let a: GL.Float
+}
+
 let vertexShaderSource = """
 #version 330 core
 
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec4 inColor;
+
+out vec4 fragColor;
 
 void main()
 {
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    fragColor = inColor;
 }
 """
 
 let fragmentShaderSource = """
 #version 330 core
+uniform vec4 color;
+in vec4 fragColor;
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+    FragColor = fragColor + color; // vec4(1.0f, 0.5f, 0.2f, 1.0f);
 }
 """
 
-let vertices: [GL.Float] = [
-    0.5,  0.5, 0.0,  // top right
-     0.5, -0.5, 0.0,  // bottom right
-    -0.5, -0.5, 0.0,  // bottom left
-    -0.5,  0.5, 0.0   // top left 0
+let vertices: [Vertex] = [
+    Vertex(x: 0.5,  y: 0.5, z: 0.0, r: 0.0, g: 1.0, b: 1.0, a: 1.0),  // top right
+    Vertex(x: 0.5, y: -0.5, z: 0.0, r: 1.0, g: 0, b: 1.0, a: 1.0),  // bottom right
+    Vertex(x: -0.5, y: -0.5, z: 0.0, r: 1, g: 0, b: 0, a: 1),  // bottom left
+    Vertex(x: -0.5, y:  0.5, z: 0.0, r: 1, g: 0.5, b: 0.5, a: 1)  // top left 0
 ]
+/*let vertices: [GL.Float] = [
+    // positions         // colors
+     0.5, -0.5, 0.0,  1.0, 0.0, 0.0,   // bottom right
+    -0.5, -0.5, 0.0,  0.0, 1.0, 0.0,   // bottom left
+     0.0,  0.5, 0.0,  0.0, 0.0, 1.0    // top 
+]*/
 let indices: [GL.UInt] = [
     0, 1, 3,
     1, 2, 3
 ]
+
+print(MemoryLayout<GL.Float>.size, MemoryLayout<GL.Float>.stride, MemoryLayout<Vertex>.size, MemoryLayout<Vertex>.stride)
 
 func main() throws {
     
@@ -74,23 +98,10 @@ func main() throws {
     let window = try SDLWindow(title: "SDLDemo",
                                frame: (x: .centered, y: .centered, width: windowSize.width, height: windowSize.height),
                                options: [.resizable, .shown, .opengl])
-    
-    let framesPerSecond = try window.displayMode().refreshRate
-
-    var frame = 0
-    
-    var event = SDL_Event()
-    
-    var needsDisplay = true
-
 
     let context = try SDLGLContext(window: window)
 
-    /*glMatrixMode(GL.PROJECTION)
-    glLoadIdentity()
-    glMatrixMode(GL.MODELVIEW)
-    glLoadIdentity()*/
-    glViewport(x: 0, y: 0, width: GL.Size(windowSize.width), height: GL.Size(windowSize.height)) //t(0, 0, windowSize.width, windowSize.height)
+    glViewport(x: 0, y: 0, width: GL.Size(windowSize.width), height: GL.Size(windowSize.height))
 
     let vertexShader = glCreateShader(GL.VERTEX_SHADER)
     withUnsafePointer(to: vertexShaderSource) { ptr in glShaderSource(vertexShader, 1, ptr, nil) }
@@ -130,64 +141,62 @@ func main() throws {
         print("Shader program linked successfully.")
     }
 
-
     glDeleteShader(vertexShader)
     glDeleteShader(fragmentShader)
-    /*glClearColor(0.0, 0.0, 0.0, 1.0)
-    glClear(GL.COLOR_BUFFER_BIT)*/
 
     print("ERROR?: ", glGetError())
 
-    /*
-    glPushMatrix() //Make sure our transformations don't affect any other transformations in other code
-    glTranslatef(5, 5, 0.0) //Translate rectangle to its assigned x and y position
-    //Put other transformations here
-    glBegin(GL.QUADS) //We want to draw a quad, i.e. shape with four sides
-    glColor3f(1, 1, 0)//Set the colour to red 
-    glVertex2f(0, 0)         //Draw the four corners of the rectangle
-    glVertex2f(0, 100)
-    glVertex2f(100, 100)
-    glVertex2f(100, 0)
-    glEnd()
-    glPopMatrix()*/
-
-    // window.glSwap()
 
     var VAO = GL.UInt()
-    withUnsafeMutablePointer(to: &VAO) { ptr in glGenVertexArrays(1, ptr) }
+    withUnsafeMutablePointer(to: &VAO) { glGenVertexArrays(1, $0) }
     var VBO = GL.UInt()
-    withUnsafeMutablePointer(to: &VBO) { ptr in glGenBuffers(1, ptr) }
+    withUnsafeMutablePointer(to: &VBO) { glGenBuffers(1, $0) }
     var EBO = GL.UInt()
-    withUnsafeMutablePointer(to: &EBO) { ptr in glGenBuffers(1, ptr) }
+    withUnsafeMutablePointer(to: &EBO) { glGenBuffers(1, $0) }
 
     glBindVertexArray(VAO)
 
     glBindBuffer(GL.ARRAY_BUFFER, VBO)
-    glBufferData(GL.ARRAY_BUFFER, vertices.count * MemoryLayout<GL.Float>.stride, vertices, GL.STATIC_DRAW)
+    glBufferData(GL.ARRAY_BUFFER, vertices.count * MemoryLayout<Vertex>.stride, vertices, GL.STATIC_DRAW)
 
     glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, EBO)
     glBufferData(GL.ELEMENT_ARRAY_BUFFER, indices.count * MemoryLayout<GL.UInt>.stride, indices, GL.STATIC_DRAW)
 
-    let offset = UnsafeRawPointer.init(bitPattern: 0)
-    glVertexAttribPointer(index: GL.UInt(0), size: GL.Int(3), type: GL.FLOAT, normalized: GL.Bool(false), stride: GL.Size(3 * MemoryLayout<GL.Float>.stride), pointer: offset)
-    // glVertexAttribPointer(index: GL.UInt, size: GL.Int, type: GL.Enum, normalized: GL.Bool, stride: GL.Size, pointer: UnsafeRawPointer?)
+    let offset1 = UnsafeRawPointer(bitPattern: 0)
+    glVertexAttribPointer(
+        index: GL.UInt(0),
+        size: GL.Int(3),
+        type: GL.FLOAT,
+        normalized: GL.Bool(false),
+        stride: GL.Size(MemoryLayout<Vertex>.stride),
+        pointer: offset1)
+    //offset1?.deallocate()
     glEnableVertexAttribArray(0)
 
+    let offset2 = UnsafeRawPointer(bitPattern: 3 * MemoryLayout<GL.Float>.stride)
+    glVertexAttribPointer(
+        index: GL.UInt(1),
+        size: GL.Int(4),
+        type: GL.FLOAT,
+        normalized: GL.Bool(false),
+        stride: GL.Size(MemoryLayout<Vertex>.stride),
+        pointer: offset2)
+    //offset2?.deallocate()
+    glEnableVertexAttribArray(1)
+
+
+    glUseProgram(shaderProgram)
     glBindVertexArray(VAO)
+    //glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
 
-    /*var VAO = GL.UInt()
-    withUnsafeMutablePointer(to: &VAO) { ptr in glGenVertexArrays(1, ptr) }
-
-    glBindVertexArray(VAO)
-    glBindBuffer(GL.ARRAY_BUFFER, VBO)
+    let uniformColorLocation = glGetUniformLocation(shaderProgram, "color")
 
 
-
-*/
-
-    //SDL_Delay(4000)
-
-    glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
+    let framesPerSecond = try window.displayMode().refreshRate
+    var frame = 0
+    var lastFrameTime = SDL_GetTicks()
+    var totalTime: UInt32 = 0
+    var event = SDL_Event()
 
     while isRunning {
         SDL_PollEvent(&event)
@@ -195,6 +204,9 @@ func main() throws {
         // increment ticker
         frame += 1
         let startTime = SDL_GetTicks()
+        let 𝚫time = startTime - lastFrameTime
+        lastFrameTime = startTime
+        totalTime += 𝚫time
         let eventType = SDL_EventType(rawValue: event.type)
         
         switch eventType {
@@ -203,7 +215,6 @@ func main() throws {
             case SDL_WINDOWEVENT:
                 if event.window.event == UInt8(SDL_WINDOWEVENT_SIZE_CHANGED.rawValue) {
                     glViewport(x: 0, y: 0, width: GL.Size(event.window.data1), height: GL.Size(event.window.data2)) //t(0, 0, windowSize.width, windowSize.height)
-                    needsDisplay = true
                 }
             default:
                 break
@@ -211,45 +222,12 @@ func main() throws {
         
         glClearColor(0.2, 0.3, 0.3, 1.0)
         glClear(GL.COLOR_BUFFER_BIT)
-
-        glUseProgram(shaderProgram)
-        glBindVertexArray(VAO)
-        //glDrawArrays(GL.TRIANGLES, 0, 3);
+        
+        glUniform4f(uniformColorLocation, 0.0, (Float(sin(Float(totalTime) / 1000 * 1 * Float.pi)) + 1.0) / 2, 0.0, 1.0)
         glDrawElements(mode: GL.TRIANGLES, count: 6, type: GL.UNSIGNED_INT, indices: UnsafeRawPointer(bitPattern: 0))
-        glBindVertexArray(0)
 
         window.glSwap()
 
-        //glBindBuffer(GL.ARRAY_BUFFER, VBO)
-        //glBufferData(GL.ARRAY_BUFFER, MemoryLayout<[Double]>.size(ofValue: vertices),)
-
-        //glBegin(GL.TRIANGLES)
-        /*for vertex in vertices {
-            glVertex2f(vertex)
-        }*/
-        /*
-        glVertex2f(-0.5, -0.5)
-        glVertex2f(0.5 + Float(frame % 50) * 0.01, -0.5)
-        glVertex2f(0.5,  0.5)
-        glVertex2f(-0.5,  0.5)*/
-        //glEnd()
-
-        //glPushMatrix() //Make sure our transformations don't affect any other transformations in other code
-        /*glTranslatef(10, 100, 0.0) //Translate rectangle to its assigned x and y position
-        //Put other transformations here
-        glBegin(GL.QUADS) //We want to draw a quad, i.e. shape with four sides
-        glColor3f(1, 1, 0)//Set the colour to red 
-        glVertex2f(0, 0)         //Draw the four corners of the rectangle
-        glVertex2f(0, 100)
-        glVertex2f(100, 100)
-        glVertex2f(100, 0)
-        glEnd()*/
-        //glPopMatrix()
-        // print("HERE")
-
-        //window.glSwap()
-
-        // sleep to save energy
         let frameDuration = SDL_GetTicks() - startTime
         if frameDuration < 1000 / UInt32(framesPerSecond) {
            SDL_Delay((1000 / UInt32(framesPerSecond)) - frameDuration)
