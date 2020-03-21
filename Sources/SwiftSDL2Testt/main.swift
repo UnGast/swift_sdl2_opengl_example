@@ -50,10 +50,15 @@ void main()
 }
 """
 
-let vertices: [Float] = [
-    -0.5, -0.5, 0.0,
-     0.5, -0.5, 0.0,
-     0.0,  0.5, 0.0
+let vertices: [GL.Float] = [
+    0.5,  0.5, 0.0,  // top right
+     0.5, -0.5, 0.0,  // bottom right
+    -0.5, -0.5, 0.0,  // bottom left
+    -0.5,  0.5, 0.0   // top left 0
+]
+let indices: [GL.UInt] = [
+    0, 1, 3,
+    1, 2, 3
 ]
 
 func main() throws {
@@ -152,11 +157,16 @@ func main() throws {
     withUnsafeMutablePointer(to: &VAO) { ptr in glGenVertexArrays(1, ptr) }
     var VBO = GL.UInt()
     withUnsafeMutablePointer(to: &VBO) { ptr in glGenBuffers(1, ptr) }
+    var EBO = GL.UInt()
+    withUnsafeMutablePointer(to: &EBO) { ptr in glGenBuffers(1, ptr) }
 
     glBindVertexArray(VAO)
 
     glBindBuffer(GL.ARRAY_BUFFER, VBO)
-    glBufferData(GL.ARRAY_BUFFER, vertices.count * MemoryLayout<Float>.stride, vertices, GL.STATIC_DRAW)
+    glBufferData(GL.ARRAY_BUFFER, vertices.count * MemoryLayout<GL.Float>.stride, vertices, GL.STATIC_DRAW)
+
+    glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, EBO)
+    glBufferData(GL.ELEMENT_ARRAY_BUFFER, indices.count * MemoryLayout<GL.UInt>.stride, indices, GL.STATIC_DRAW)
 
     let offset = UnsafeRawPointer.init(bitPattern: 0)
     glVertexAttribPointer(index: GL.UInt(0), size: GL.Int(3), type: GL.FLOAT, normalized: GL.Bool(false), stride: GL.Size(3 * MemoryLayout<GL.Float>.stride), pointer: offset)
@@ -176,6 +186,8 @@ func main() throws {
 */
 
     //SDL_Delay(4000)
+
+    glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
 
     while isRunning {
         SDL_PollEvent(&event)
@@ -202,13 +214,14 @@ func main() throws {
 
         glUseProgram(shaderProgram)
         glBindVertexArray(VAO)
-        glDrawArrays(GL.TRIANGLES, 0, 3)
+        //glDrawArrays(GL.TRIANGLES, 0, 3);
+        glDrawElements(mode: GL.TRIANGLES, count: 6, type: GL.UNSIGNED_INT, indices: UnsafeRawPointer(bitPattern: 0))
+        glBindVertexArray(0)
 
         window.glSwap()
 
         //glBindBuffer(GL.ARRAY_BUFFER, VBO)
         //glBufferData(GL.ARRAY_BUFFER, MemoryLayout<[Double]>.size(ofValue: vertices),)
-        //glDrawArrays(GL.TRIANGLES, 0, 3);
 
         //glBegin(GL.TRIANGLES)
         /*for vertex in vertices {
