@@ -28,32 +28,21 @@ if renderDrivers.isEmpty == false {
         }
     }
 }*/
-
-struct Vertex {
-    let x: GL.Float
-    let y: GL.Float
-    let z: GL.Float
-    let r: GL.Float
-    let g: GL.Float
-    let b: GL.Float
-    let a: GL.Float
-    let s: GL.Float
-    let t: GL.Float
-}
-
 let vertexShaderSource = """
 #version 330 core
 
-layout (location = 0) in vec3 aPos;
+layout (location = 0) in vec3 position;
 layout (location = 1) in vec4 inColor;
 layout (location = 2) in vec2 texCoord;
+
+uniform mat4 transform;
 
 out vec4 fragColor;
 out vec2 TexCoord;
 
 void main()
 {
-    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    gl_Position = transform * vec4(position, 1.0);
     fragColor = inColor;
     TexCoord = texCoord;
 }
@@ -75,6 +64,102 @@ void main()
     FragColor = texture(inTexture, TexCoord) + fragColor + color; // vec4(1.0f, 0.5f, 0.2f, 1.0f);
 }
 """
+
+struct Vertex {
+    let x: GL.Float
+    let y: GL.Float
+    let z: GL.Float
+    let r: GL.Float
+    let g: GL.Float
+    let b: GL.Float
+    let a: GL.Float
+    let s: GL.Float
+    let t: GL.Float
+}
+
+protocol Initializable {
+    init()
+}
+
+protocol Matrix {
+    associatedtype ElementType: Numeric
+
+    var rows: Int { get set }
+    var cols: Int { get set }
+    var elements: [ElementType] { get set }
+
+    init()
+    init(rows: Int, cols: Int)
+
+    subscript(row: Int, col: Int) -> ElementType { get set }
+}
+
+extension Matrix {
+    init (rows: Int, cols: Int) {
+        self.init()
+        self.rows = rows
+        self.cols = cols
+        self.elements = [ElementType](repeating: ElementType.init(exactly: 0)!, count: 29)
+    }
+
+    subscript(row: Int, col: Int) -> ElementType { 
+        get {
+            return elements[row * self.cols + col]
+        }
+
+        set {
+            elements[row * self.cols + col] = newValue
+        }
+    }
+}
+
+struct MatrixMultiplicationError: Error {}
+
+func * <T: Matrix>(lhs: T, rhs: T) throws -> T {
+    if (lhs.cols != rhs.rows) {
+        throw MatrixMultiplicationError()
+    }
+    var result = T.init(rows: lhs.rows, cols: rhs.cols)
+    for rIndex in 0..<lhs.rows {
+        for cIndex in 0..<rhs.cols {
+            var element = T.ElementType.init(exactly: 0)!
+            for iIndex in 0..<lhs.cols {
+                element += lhs[rIndex, iIndex] * rhs[iIndex, cIndex]
+            }
+            result[rIndex, cIndex] = element
+        }
+    }
+    return result
+}
+
+struct TransformationMatrix: Matrix {
+    var rows: Int = 4
+    var cols: Int = 4
+    var elements: [GL.Float]
+
+    init () {
+        elements = [GL.Float](repeating: 0, count: 16)
+    }
+    init(_ elements: [GL.Float]) { self.elements = elements }
+}
+
+var transform = TransformationMatrix([
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0
+])
+
+let t2 = TransformationMatrix([
+    2.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0
+])
+
+try transform = transform * t2
+
+print(transform)
 
 let vertices: [Vertex] = [
     Vertex(x: 0.5,  y: 0.5, z: 0.0, r: 0.0, g: 1.0, b: 1.0, a: 0.2, s: 1, t: 1),  // top right
@@ -224,6 +309,9 @@ func main() throws {
     glUseProgram(shaderProgram)
     glBindVertexArray(VAO)
     //glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
+
+    let uniformTransformLocation = glGetUniformLocation(shaderProgram, "transform")
+    glUniformMatrix4fv(uniformTransformLocation, 1, false, transform.elements)
 
     let uniformColorLocation = glGetUniformLocation(shaderProgram, "color")
 
