@@ -37,6 +37,8 @@ struct Vertex {
     let g: GL.Float
     let b: GL.Float
     let a: GL.Float
+    let s: GL.Float
+    let t: GL.Float
 }
 
 let vertexShaderSource = """
@@ -44,33 +46,41 @@ let vertexShaderSource = """
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec4 inColor;
+layout (location = 2) in vec2 texCoord;
 
 out vec4 fragColor;
+out vec2 TexCoord;
 
 void main()
 {
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
     fragColor = inColor;
+    TexCoord = texCoord;
 }
 """
 
 let fragmentShaderSource = """
 #version 330 core
+
 uniform vec4 color;
+uniform sampler2D inTexture;
+
 in vec4 fragColor;
+in vec2 TexCoord;
+
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = fragColor + color; // vec4(1.0f, 0.5f, 0.2f, 1.0f);
+    FragColor = texture(inTexture, TexCoord) + fragColor + color; // vec4(1.0f, 0.5f, 0.2f, 1.0f);
 }
 """
 
 let vertices: [Vertex] = [
-    Vertex(x: 0.5,  y: 0.5, z: 0.0, r: 0.0, g: 1.0, b: 1.0, a: 1.0),  // top right
-    Vertex(x: 0.5, y: -0.5, z: 0.0, r: 1.0, g: 0, b: 1.0, a: 1.0),  // bottom right
-    Vertex(x: -0.5, y: -0.5, z: 0.0, r: 1, g: 0, b: 0, a: 1),  // bottom left
-    Vertex(x: -0.5, y:  0.5, z: 0.0, r: 1, g: 0.5, b: 0.5, a: 1)  // top left 0
+    Vertex(x: 0.5,  y: 0.5, z: 0.0, r: 0.0, g: 1.0, b: 1.0, a: 0.2, s: 1, t: 1),  // top right
+    Vertex(x: 0.5, y: -0.5, z: 0.0, r: 1.0, g: 0, b: 1.0, a: 0.7, s: 1, t: 0),  // bottom right
+    Vertex(x: -0.5, y: -0.5, z: 0.0, r: 1, g: 0, b: 0, a: 0.5, s: 0, t: 0),  // bottom left
+    Vertex(x: -0.5, y:  0.5, z: 0.0, r: 1, g: 0.5, b: 0.5, a: 0.5, s: 0, t: 1)  // top left 0
 ]
 /*let vertices: [GL.Float] = [
     // positions         // colors
@@ -82,6 +92,15 @@ let indices: [GL.UInt] = [
     0, 1, 3,
     1, 2, 3
 ]
+
+let textureWidth = 200
+let textureHeight = 200
+var textureData = [GL.UByte](repeating: 0, count: textureWidth * textureHeight * 3)
+for pixelIndex in 0..<(textureWidth * textureHeight) {
+    textureData[pixelIndex * 3] = 255
+    textureData[pixelIndex * 3 + 1] = 0
+    textureData[pixelIndex * 3 + 2] = 15
+}
 
 print(MemoryLayout<GL.Float>.size, MemoryLayout<GL.Float>.stride, MemoryLayout<Vertex>.size, MemoryLayout<Vertex>.stride)
 
@@ -162,29 +181,46 @@ func main() throws {
     glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, EBO)
     glBufferData(GL.ELEMENT_ARRAY_BUFFER, indices.count * MemoryLayout<GL.UInt>.stride, indices, GL.STATIC_DRAW)
 
-    let offset1 = UnsafeRawPointer(bitPattern: 0)
     glVertexAttribPointer(
         index: GL.UInt(0),
-        size: GL.Int(3),
+        size: 3,
         type: GL.FLOAT,
-        normalized: GL.Bool(false),
+        normalized: false,
         stride: GL.Size(MemoryLayout<Vertex>.stride),
-        pointer: offset1)
-    //offset1?.deallocate()
+        pointer: UnsafeRawPointer(bitPattern: 0))
     glEnableVertexAttribArray(0)
 
-    let offset2 = UnsafeRawPointer(bitPattern: 3 * MemoryLayout<GL.Float>.stride)
     glVertexAttribPointer(
         index: GL.UInt(1),
-        size: GL.Int(4),
+        size: 4,
         type: GL.FLOAT,
-        normalized: GL.Bool(false),
+        normalized: false,
         stride: GL.Size(MemoryLayout<Vertex>.stride),
-        pointer: offset2)
-    //offset2?.deallocate()
+        pointer: UnsafeRawPointer(bitPattern: 3 * MemoryLayout<GL.Float>.stride))
     glEnableVertexAttribArray(1)
 
+    glVertexAttribPointer(
+        index: GL.UInt(2),
+        size: 2,
+        type: GL.FLOAT,
+        normalized: false,
+        stride: GL.Size(MemoryLayout<Vertex>.stride),
+        pointer: UnsafeRawPointer(bitPattern: 7 * MemoryLayout<GL.Float>.stride))
+    glEnableVertexAttribArray(2)
 
+    var texture = GL.UInt()
+    withUnsafeMutablePointer(to: &texture) { glGenTextures(1, $0) }
+    glBindTexture(GL.TEXTURE_2D, texture)
+    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.REPEAT)
+    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.REPEAT)
+    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
+    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)    
+    glTexImage2D(GL.TEXTURE_2D, 0, GL.RGB, GL.Size(textureWidth / 2), GL.Size(textureHeight / 2), 0, GL.RGB, GL.UNSIGNED_BYTE, textureData)
+    glGenerateMipmap(GL.TEXTURE_2D)
+
+    print("ERROR?: ", glGetError())
+
+    glBindTexture(GL.TEXTURE_2D, texture)
     glUseProgram(shaderProgram)
     glBindVertexArray(VAO)
     //glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
