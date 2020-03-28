@@ -65,129 +65,31 @@ void main()
 }
 """
 
-struct Vertex {
-    let x: GL.Float
-    let y: GL.Float
-    let z: GL.Float
-    let r: GL.Float
-    let g: GL.Float
-    let b: GL.Float
-    let a: GL.Float
-    let s: GL.Float
-    let t: GL.Float
-}
+var rect = Rect()
 
-protocol Initializable {
-    init()
-}
+var globalTransform = TransformationMatrix(
+    scale: Vector3([1, 1, 1]), translation: Vector3([0, 0, 0]))
 
-protocol Matrix {
-    associatedtype ElementType: Numeric
+var windowSize = (width: 600, height: 480)
 
-    var rows: Int { get set }
-    var cols: Int { get set }
-    var elements: [ElementType] { get set }
-
-    init()
-    init(rows: Int, cols: Int)
-
-    subscript(row: Int, col: Int) -> ElementType { get set }
-}
-
-extension Matrix {
-    init (rows: Int, cols: Int) {
-        self.init()
-        self.rows = rows
-        self.cols = cols
-        self.elements = [ElementType](repeating: ElementType.init(exactly: 0)!, count: 29)
+func updateGlobalTransform() {
+    var scale: Vector3
+    if (windowSize.width > windowSize.height) {
+        scale = Vector3([
+            GL.Float(windowSize.height) / GL.Float(windowSize.width),
+            1,
+            1
+        ])
+    } else {
+        scale = Vector3([
+            1,
+            GL.Float(windowSize.width) / GL.Float(windowSize.height),
+            1
+        ])
     }
-
-    subscript(row: Int, col: Int) -> ElementType { 
-        get {
-            return elements[row * self.cols + col]
-        }
-
-        set {
-            elements[row * self.cols + col] = newValue
-        }
-    }
+    globalTransform.scale = scale
 }
-
-struct MatrixMultiplicationError: Error {}
-
-func * <T: Matrix>(lhs: T, rhs: T) throws -> T {
-    if (lhs.cols != rhs.rows) {
-        throw MatrixMultiplicationError()
-    }
-    var result = T.init(rows: lhs.rows, cols: rhs.cols)
-    for rIndex in 0..<lhs.rows {
-        for cIndex in 0..<rhs.cols {
-            var element = T.ElementType.init(exactly: 0)!
-            for iIndex in 0..<lhs.cols {
-                element += lhs[rIndex, iIndex] * rhs[iIndex, cIndex]
-            }
-            result[rIndex, cIndex] = element
-        }
-    }
-    return result
-}
-
-struct TransformationMatrix: Matrix {
-    var rows: Int = 4
-    var cols: Int = 4
-    var elements: [GL.Float]
-
-    init () {
-        elements = [GL.Float](repeating: 0, count: 16)
-    }
-    init(_ elements: [GL.Float]) { self.elements = elements }
-}
-
-var transform = TransformationMatrix([
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 1.0, 0.0,
-    0.0, 0.0, 0.0, 1.0
-])
-
-let t2 = TransformationMatrix([
-    2.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 1.0, 0.0,
-    0.0, 0.0, 0.0, 1.0
-])
-
-try transform = transform * t2
-
-print(transform)
-
-let vertices: [Vertex] = [
-    Vertex(x: 0.5,  y: 0.5, z: 0.0, r: 0.0, g: 1.0, b: 1.0, a: 0.2, s: 1, t: 1),  // top right
-    Vertex(x: 0.5, y: -0.5, z: 0.0, r: 1.0, g: 0, b: 1.0, a: 0.7, s: 1, t: 0),  // bottom right
-    Vertex(x: -0.5, y: -0.5, z: 0.0, r: 1, g: 0, b: 0, a: 0.5, s: 0, t: 0),  // bottom left
-    Vertex(x: -0.5, y:  0.5, z: 0.0, r: 1, g: 0.5, b: 0.5, a: 0.5, s: 0, t: 1)  // top left 0
-]
-/*let vertices: [GL.Float] = [
-    // positions         // colors
-     0.5, -0.5, 0.0,  1.0, 0.0, 0.0,   // bottom right
-    -0.5, -0.5, 0.0,  0.0, 1.0, 0.0,   // bottom left
-     0.0,  0.5, 0.0,  0.0, 0.0, 1.0    // top 
-]*/
-let indices: [GL.UInt] = [
-    0, 1, 3,
-    1, 2, 3
-]
-
-let textureWidth = 200
-let textureHeight = 200
-var textureData = [GL.UByte](repeating: 0, count: textureWidth * textureHeight * 3)
-for pixelIndex in 0..<(textureWidth * textureHeight) {
-    textureData[pixelIndex * 3] = 255
-    textureData[pixelIndex * 3 + 1] = 0
-    textureData[pixelIndex * 3 + 2] = 15
-}
-
-print(MemoryLayout<GL.Float>.size, MemoryLayout<GL.Float>.stride, MemoryLayout<Vertex>.size, MemoryLayout<Vertex>.stride)
+updateGlobalTransform()
 
 func main() throws {
     
@@ -197,8 +99,6 @@ func main() throws {
     
     defer { SDL.quit() }
     
-    let windowSize = (width: 600, height: 480)
-
     let window = try SDLWindow(title: "SDLDemo",
                                frame: (x: .centered, y: .centered, width: windowSize.width, height: windowSize.height),
                                options: [.resizable, .shown, .opengl])
@@ -261,10 +161,10 @@ func main() throws {
     glBindVertexArray(VAO)
 
     glBindBuffer(GL.ARRAY_BUFFER, VBO)
-    glBufferData(GL.ARRAY_BUFFER, vertices.count * MemoryLayout<Vertex>.stride, vertices, GL.STATIC_DRAW)
+    glBufferData(GL.ARRAY_BUFFER, Rect.vertices.count * MemoryLayout<Vertex>.stride, Rect.vertices, GL.STATIC_DRAW)
 
     glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, EBO)
-    glBufferData(GL.ELEMENT_ARRAY_BUFFER, indices.count * MemoryLayout<GL.UInt>.stride, indices, GL.STATIC_DRAW)
+    glBufferData(GL.ELEMENT_ARRAY_BUFFER, Rect.indices.count * MemoryLayout<GL.UInt>.stride, Rect.indices, GL.STATIC_DRAW)
 
     glVertexAttribPointer(
         index: GL.UInt(0),
@@ -300,19 +200,17 @@ func main() throws {
     glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.REPEAT)
     glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
     glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)    
-    glTexImage2D(GL.TEXTURE_2D, 0, GL.RGB, GL.Size(textureWidth / 2), GL.Size(textureHeight / 2), 0, GL.RGB, GL.UNSIGNED_BYTE, textureData)
+    glTexImage2D(GL.TEXTURE_2D, 0, GL.RGB, GL.Size(Rect.textureWidth / 2), GL.Size(Rect.textureHeight / 2), 0, GL.RGB, GL.UNSIGNED_BYTE, Rect.textureData)
     glGenerateMipmap(GL.TEXTURE_2D)
 
     print("ERROR?: ", glGetError())
 
-    glBindTexture(GL.TEXTURE_2D, texture)
+    //glBindTexture(GL.TEXTURE_2D, texture)
     glUseProgram(shaderProgram)
     glBindVertexArray(VAO)
     //glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
 
     let uniformTransformLocation = glGetUniformLocation(shaderProgram, "transform")
-    glUniformMatrix4fv(uniformTransformLocation, 1, false, transform.elements)
-
     let uniformColorLocation = glGetUniformLocation(shaderProgram, "color")
 
 
@@ -321,6 +219,12 @@ func main() throws {
     var lastFrameTime = SDL_GetTicks()
     var totalTime: UInt32 = 0
     var event = SDL_Event()
+    var activeKeys = [
+        SDL_Keycode(SDLK_DOWN): false,
+        SDL_Keycode(SDLK_UP): false,
+        SDL_Keycode(SDLK_LEFT): false,
+        SDL_Keycode(SDLK_RIGHT): false
+    ]
 
     while isRunning {
         SDL_PollEvent(&event)
@@ -338,16 +242,40 @@ func main() throws {
                 isRunning = false
             case SDL_WINDOWEVENT:
                 if event.window.event == UInt8(SDL_WINDOWEVENT_SIZE_CHANGED.rawValue) {
-                    glViewport(x: 0, y: 0, width: GL.Size(event.window.data1), height: GL.Size(event.window.data2)) //t(0, 0, windowSize.width, windowSize.height)
+                    windowSize.width = Int(event.window.data1)
+                    windowSize.height = Int(event.window.data2)
+                    glViewport(x: 0, y: 0, width: GL.Size(windowSize.width), height: GL.Size(windowSize.height)) //t(0, 0, windowSize.width, windowSize.height)
+                    updateGlobalTransform()
                 }
+            case SDL_KEYDOWN:
+                activeKeys[event.key.keysym.sym] = true
+            case SDL_KEYUP:
+                activeKeys[event.key.keysym.sym] = false
             default:
                 break
         }
         
+        let velocity = 0.5 * Float(𝚫time) / 1000
+        var velocityChangeVector = Vector3()
+        if activeKeys[SDL_Keycode(SDLK_UP)]! {
+            velocityChangeVector[1] += velocity
+        }
+        if activeKeys[SDL_Keycode(SDLK_DOWN)]! {
+            velocityChangeVector[1] -= velocity
+        }
+        if activeKeys[SDL_Keycode(SDLK_LEFT)]! {
+            velocityChangeVector[0] -= velocity
+        }
+        if activeKeys[SDL_Keycode(SDLK_RIGHT)]! {
+            velocityChangeVector[0] += velocity
+        }
+        try? rect.transform.translation.add_(velocityChangeVector)
+
         glClearColor(0.2, 0.3, 0.3, 1.0)
         glClear(GL.COLOR_BUFFER_BIT)
         
         glUniform4f(uniformColorLocation, 0.0, (Float(sin(Float(totalTime) / 1000 * 1 * Float.pi)) + 1.0) / 2, 0.0, 1.0)
+        try? glUniformMatrix4fv(uniformTransformLocation, 1, false, (globalTransform * rect.transform).transpose().elements)
         glDrawElements(mode: GL.TRIANGLES, count: 6, type: GL.UNSIGNED_INT, indices: UnsafeRawPointer(bitPattern: 0))
 
         window.glSwap()
