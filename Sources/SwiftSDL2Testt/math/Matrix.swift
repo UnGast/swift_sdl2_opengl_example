@@ -134,7 +134,7 @@ struct TransformationMatrix: Matrix {
     }
 
     init(
-        scaling: Vector3?, translation: Vector3?, rotationAxis: Vector3?, rotationAngle: Float?) {
+        scaling: Vector3? = nil,  translation: Vector3? = nil, rotationAxis: Vector3? = nil, rotationAngle: Float? = nil) {
             self.scaling = scaling ?? Vector3([1, 1, 1])
             self.translation = translation ?? Vector3([0, 0, 0])
             self.rotationAxis = rotationAxis ?? Vector3([0, 0, 0])

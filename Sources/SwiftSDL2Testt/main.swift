@@ -67,19 +67,16 @@ void main()
 }
 """
 
+var windowSize = (width: 600, height: 480)
 
-let viewMatrix = TransformationMatrix(
-    scaling: nil,
-    translation: Vector3([0, 0, -5]),
-    rotationAxis: Vector3([0, 0, 1]),
-    rotationAngle: 50)
+let viewMatrix = TransformationMatrix(translation: Vector3([0, 0, -5]))
 
 var projectionMatrix = TransformationMatrix()
 func updateProjectionMatrix() {
     let aspectRatio = Float(windowSize.width) / Float(windowSize.height)
     let near = Float(0.1)
     let far = Float(100)
-    let fov = Float(45)
+    let fov = Float(35)
     let fovRad = fov / 180 * Float.pi
     
     projectionMatrix = TransformationMatrix([
@@ -88,53 +85,23 @@ func updateProjectionMatrix() {
         0, 0, -(far + near) / (far - near), -(2 * far * near) / (far - near),
         0, 0, -1, 0
     ])
-    //let uh = 1/tan(fov/2)
-    /*let scale = tan(viewAngle * 0.5 * Float.pi / 180) * near; 
-    print("SCALE", scale)
-    let right = aspectRatio * scale
-    print("ASPECT", scale)
-    let left = -right; 
-    let top = scale;
-    let bottom = -top; 
-    /*
-    let S = 1 / (tan((fov/2) * (Float.PI/180)))
-    let v1 = -far/(far - near)
-    let v2 = -(far * near)/(far - near)*/
-    projectionMatrix = TransformationMatrix([
-        (2 * near)/(right - left), 0, (right + left)/(right - left), 0,
-        0, 2 * near / (top - bottom), (top + bottom)/(top - bottom), 0,
-        0, 0, -(far + near)/(far - near), -(2 * far * near)/(far - near),
-        0, 0, -1, 0
-    ])*/
-    print(projectionMatrix)
 }
 updateProjectionMatrix()
 
 var rect = Rect()
+rect.transform.rotationAxis = Vector3([0, 0, 1])
+var cube = Cube()
+cube.transform.translation = Vector3([4, 2, -10])
 
-var windowSize = (width: 600, height: 480)
-/*
-var globalTransform = TransformationMatrix(
-    scale: Vector3([1, 1, 1]), translation: Vector3([0, 0, 0]))
+var entities = [Entity](arrayLiteral: rect, cube)
+var renderObjects: [Entity: EntityRenderObject] = [:]
 
-func updateGlobalTransform() {
-    var scale: Vector3
-    if (windowSize.width > windowSize.height) {
-        scale = Vector3([
-            GL.Float(windowSize.height) / GL.Float(windowSize.width),
-            1,
-            1
-        ])
-    } else {
-        scale = Vector3([
-            1,
-            GL.Float(windowSize.width) / GL.Float(windowSize.height),
-            1
-        ])
-    }
-    globalTransform.scale = scale
+struct EntityRenderObject {
+    let vao: GL.UInt
+    let vbo: GL.UInt
+    let ebo: GL.UInt
+    let texture: GL.UInt
 }
-updateGlobalTransform()*/
 
 func main() throws {
     
@@ -195,62 +162,70 @@ func main() throws {
 
     print("ERROR?: ", glGetError())
 
+    for entity in entities {
+        var VAO = GL.UInt()
+        withUnsafeMutablePointer(to: &VAO) { glGenVertexArrays(1, $0) }
+        var VBO = GL.UInt()
+        withUnsafeMutablePointer(to: &VBO) { glGenBuffers(1, $0) }
+        var EBO = GL.UInt()
+        withUnsafeMutablePointer(to: &EBO) { glGenBuffers(1, $0) }
 
-    var VAO = GL.UInt()
-    withUnsafeMutablePointer(to: &VAO) { glGenVertexArrays(1, $0) }
-    var VBO = GL.UInt()
-    withUnsafeMutablePointer(to: &VBO) { glGenBuffers(1, $0) }
-    var EBO = GL.UInt()
-    withUnsafeMutablePointer(to: &EBO) { glGenBuffers(1, $0) }
+        glBindVertexArray(VAO)
 
-    glBindVertexArray(VAO)
+        glBindBuffer(GL.ARRAY_BUFFER, VBO)
+        glBufferData(GL.ARRAY_BUFFER, entity.vertices.count * MemoryLayout<Vertex>.stride, entity.vertices, GL.STATIC_DRAW)
 
-    glBindBuffer(GL.ARRAY_BUFFER, VBO)
-    glBufferData(GL.ARRAY_BUFFER, Rect.vertices.count * MemoryLayout<Vertex>.stride, Rect.vertices, GL.STATIC_DRAW)
+        if (entity.indices != nil) {
+            glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, EBO)
+            glBufferData(GL.ELEMENT_ARRAY_BUFFER, entity.indices!.count * MemoryLayout<GL.UInt>.stride, entity.indices, GL.STATIC_DRAW)
+        }
 
-    glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, EBO)
-    glBufferData(GL.ELEMENT_ARRAY_BUFFER, Rect.indices.count * MemoryLayout<GL.UInt>.stride, Rect.indices, GL.STATIC_DRAW)
+        glVertexAttribPointer(
+            index: GL.UInt(0),
+            size: 3,
+            type: GL.FLOAT,
+            normalized: false,
+            stride: GL.Size(MemoryLayout<Vertex>.stride),
+            pointer: UnsafeRawPointer(bitPattern: 0))
+        glEnableVertexAttribArray(0)
 
-    glVertexAttribPointer(
-        index: GL.UInt(0),
-        size: 3,
-        type: GL.FLOAT,
-        normalized: false,
-        stride: GL.Size(MemoryLayout<Vertex>.stride),
-        pointer: UnsafeRawPointer(bitPattern: 0))
-    glEnableVertexAttribArray(0)
+        glVertexAttribPointer(
+            index: GL.UInt(1),
+            size: 4,
+            type: GL.FLOAT,
+            normalized: false,
+            stride: GL.Size(MemoryLayout<Vertex>.stride),
+            pointer: UnsafeRawPointer(bitPattern: 3 * MemoryLayout<GL.Float>.stride))
+        glEnableVertexAttribArray(1)
 
-    glVertexAttribPointer(
-        index: GL.UInt(1),
-        size: 4,
-        type: GL.FLOAT,
-        normalized: false,
-        stride: GL.Size(MemoryLayout<Vertex>.stride),
-        pointer: UnsafeRawPointer(bitPattern: 3 * MemoryLayout<GL.Float>.stride))
-    glEnableVertexAttribArray(1)
+        glVertexAttribPointer(
+            index: GL.UInt(2),
+            size: 2,
+            type: GL.FLOAT,
+            normalized: false,
+            stride: GL.Size(MemoryLayout<Vertex>.stride),
+            pointer: UnsafeRawPointer(bitPattern: 7 * MemoryLayout<GL.Float>.stride))
+        glEnableVertexAttribArray(2)
 
-    glVertexAttribPointer(
-        index: GL.UInt(2),
-        size: 2,
-        type: GL.FLOAT,
-        normalized: false,
-        stride: GL.Size(MemoryLayout<Vertex>.stride),
-        pointer: UnsafeRawPointer(bitPattern: 7 * MemoryLayout<GL.Float>.stride))
-    glEnableVertexAttribArray(2)
+        var texture = GL.UInt()
+        if (entity.texture != nil) {
+            withUnsafeMutablePointer(to: &texture) { glGenTextures(1, $0) }
+            glBindTexture(GL.TEXTURE_2D, texture)
+            glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.REPEAT)
+            glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.REPEAT)
+            glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
+            glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
+            glTexImage2D(GL.TEXTURE_2D, 0, GL.RGB, GL.Size(entity.textureWidth!), GL.Size(entity.textureHeight!), 0, GL.RGB, GL.UNSIGNED_BYTE, entity.texture)
+            glGenerateMipmap(GL.TEXTURE_2D)
+            ///glBindVertexArray(0)
+            //glBindTexture(GL.TEXTURE_2D, 0)
+        }
 
-    var texture = GL.UInt()
-    withUnsafeMutablePointer(to: &texture) { glGenTextures(1, $0) }
-    glBindTexture(GL.TEXTURE_2D, texture)
-    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.REPEAT)
-    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.REPEAT)
-    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
-    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
-    glTexImage2D(GL.TEXTURE_2D, 0, GL.RGB, GL.Size(Rect.TEXTURE_WIDTH), GL.Size(Rect.TEXTURE_HEIGHT), 0, GL.RGB, GL.UNSIGNED_BYTE, rect.texture)
-    glGenerateMipmap(GL.TEXTURE_2D)
-    ///glBindVertexArray(0)
-    //glBindTexture(GL.TEXTURE_2D, 0)
+        var renderObject = EntityRenderObject(vao: VAO, vbo: VBO, ebo: EBO, texture: texture)
+        renderObjects[entity] = renderObject
 
-    print("ERROR?: ", glGetError())
+        print("ERROR?: ", glGetError())
+    }
 
     let uniformModelLocation = glGetUniformLocation(shaderProgram, "model")
     let uniformViewLocation = glGetUniformLocation(shaderProgram, "view")
@@ -258,9 +233,7 @@ func main() throws {
     let uniformColorLocation = glGetUniformLocation(shaderProgram, "color")
 
     glUseProgram(shaderProgram)
-    glActiveTexture(GL.TEXTURE0)
-    glBindTexture(GL.TEXTURE_2D, texture)
-    glBindVertexArray(VAO)
+
     //glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
 
 
@@ -320,15 +293,29 @@ func main() throws {
             velocityChangeVector[0] += velocity
         }
         try? rect.transform.translation.add_(velocityChangeVector)
+        rect.transform.rotationAngle += 1
 
         glClearColor(0.2, 0.3, 0.3, 1.0)
         glClear(GL.COLOR_BUFFER_BIT)
-        
-        glUniform4f(uniformColorLocation, 0.0, (Float(sin(Float(totalTime) / 1000 * 1 * Float.pi)) + 1.0) / 2, 0.0, 1.0)
-        glUniformMatrix4fv(uniformModelLocation, 1, true, rect.transform.elements)
-        glUniformMatrix4fv(uniformViewLocation, 1, true, viewMatrix.elements)
-        glUniformMatrix4fv(uniformProjectionLocation, 1, true, projectionMatrix.elements)
-        glDrawElements(mode: GL.TRIANGLES, count: 6, type: GL.UNSIGNED_INT, indices: UnsafeRawPointer(bitPattern: 0))
+
+        for (entity, renderObject) in renderObjects {
+            if (entity.texture == nil) {
+                glBindTexture(GL.TEXTURE_2D, 0)
+            } else {
+                glBindTexture(GL.TEXTURE_2D, renderObject.texture)
+            }
+            glBindVertexArray(renderObject.vao)
+            
+            glUniform4f(uniformColorLocation, 0.0, (Float(sin(Float(totalTime) / 1000 * 1 * Float.pi)) + 1.0) / 2, 0.0, 1.0)
+            glUniformMatrix4fv(uniformModelLocation, 1, true, entity.transform.elements)
+            glUniformMatrix4fv(uniformViewLocation, 1, true, viewMatrix.elements)
+            glUniformMatrix4fv(uniformProjectionLocation, 1, true, projectionMatrix.elements)
+            if (entity.indices == nil) {
+                glDrawArrays(GL.TRIANGLES, 0, GL.Size(entity.vertices.count))
+            } else {
+                glDrawElements(mode: GL.TRIANGLES, count: 6, type: GL.UNSIGNED_INT, indices: UnsafeRawPointer(bitPattern: 0))
+            }
+        }
 
         window.glSwap()
 
