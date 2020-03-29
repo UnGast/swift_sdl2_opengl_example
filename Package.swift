@@ -24,12 +24,12 @@ let package = Package(
             name: "SwiftSDL2Testt",
             dependencies: ["SDL", "GL"]),
         /*.systemLibrary(
-            name: "CSDL2",
-            pkgConfig: "sdl2",
+            name: "Cglm"
+            /*pkgConfig: "glm",
             providers: [
                 .brew(["sdl2"]),
                 .apt(["libsdl2-dev"])
-            ]),*/
+            ])*/),*/
         .testTarget(
             name: "SwiftSDL2TesttTests",
             dependencies: ["SwiftSDL2Testt"]),

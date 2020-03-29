@@ -35,14 +35,16 @@ layout (location = 0) in vec3 position;
 layout (location = 1) in vec4 inColor;
 layout (location = 2) in vec2 texCoord;
 
-uniform mat4 transform;
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
 
 out vec4 fragColor;
 out vec2 TexCoord;
 
 void main()
 {
-    gl_Position = transform * vec4(position, 1.0);
+    gl_Position = projection * view * model * vec4(position, 1.0);
     fragColor = inColor;
     TexCoord = texCoord;
 }
@@ -61,16 +63,59 @@ out vec4 FragColor;
 
 void main()
 {
-    FragColor = texture(inTexture, TexCoord) + fragColor + color; // vec4(1.0f, 0.5f, 0.2f, 1.0f);
+    FragColor = texture(inTexture, TexCoord); // vec4(1.0f, 0.5f, 0.2f, 1.0f);
 }
 """
 
+
+let viewMatrix = TransformationMatrix(
+    scaling: nil,
+    translation: Vector3([0, 0, -5]),
+    rotationAxis: Vector3([0, 0, 1]),
+    rotationAngle: 50)
+
+var projectionMatrix = TransformationMatrix()
+func updateProjectionMatrix() {
+    let aspectRatio = Float(windowSize.width) / Float(windowSize.height)
+    let near = Float(0.1)
+    let far = Float(100)
+    let fov = Float(45)
+    let fovRad = fov / 180 * Float.pi
+    
+    projectionMatrix = TransformationMatrix([
+        1 / (aspectRatio * tan(fovRad / 2)), 0, 0, 0,
+        0, 1 / tan(fovRad / 2), 0, 0,
+        0, 0, -(far + near) / (far - near), -(2 * far * near) / (far - near),
+        0, 0, -1, 0
+    ])
+    //let uh = 1/tan(fov/2)
+    /*let scale = tan(viewAngle * 0.5 * Float.pi / 180) * near; 
+    print("SCALE", scale)
+    let right = aspectRatio * scale
+    print("ASPECT", scale)
+    let left = -right; 
+    let top = scale;
+    let bottom = -top; 
+    /*
+    let S = 1 / (tan((fov/2) * (Float.PI/180)))
+    let v1 = -far/(far - near)
+    let v2 = -(far * near)/(far - near)*/
+    projectionMatrix = TransformationMatrix([
+        (2 * near)/(right - left), 0, (right + left)/(right - left), 0,
+        0, 2 * near / (top - bottom), (top + bottom)/(top - bottom), 0,
+        0, 0, -(far + near)/(far - near), -(2 * far * near)/(far - near),
+        0, 0, -1, 0
+    ])*/
+    print(projectionMatrix)
+}
+updateProjectionMatrix()
+
 var rect = Rect()
 
+var windowSize = (width: 600, height: 480)
+/*
 var globalTransform = TransformationMatrix(
     scale: Vector3([1, 1, 1]), translation: Vector3([0, 0, 0]))
-
-var windowSize = (width: 600, height: 480)
 
 func updateGlobalTransform() {
     var scale: Vector3
@@ -89,7 +134,7 @@ func updateGlobalTransform() {
     }
     globalTransform.scale = scale
 }
-updateGlobalTransform()
+updateGlobalTransform()*/
 
 func main() throws {
     
@@ -199,19 +244,24 @@ func main() throws {
     glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.REPEAT)
     glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.REPEAT)
     glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
-    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)    
-    glTexImage2D(GL.TEXTURE_2D, 0, GL.RGB, GL.Size(Rect.textureWidth / 2), GL.Size(Rect.textureHeight / 2), 0, GL.RGB, GL.UNSIGNED_BYTE, Rect.textureData)
+    glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
+    glTexImage2D(GL.TEXTURE_2D, 0, GL.RGB, GL.Size(Rect.TEXTURE_WIDTH), GL.Size(Rect.TEXTURE_HEIGHT), 0, GL.RGB, GL.UNSIGNED_BYTE, rect.texture)
     glGenerateMipmap(GL.TEXTURE_2D)
+    ///glBindVertexArray(0)
+    //glBindTexture(GL.TEXTURE_2D, 0)
 
     print("ERROR?: ", glGetError())
 
-    //glBindTexture(GL.TEXTURE_2D, texture)
+    let uniformModelLocation = glGetUniformLocation(shaderProgram, "model")
+    let uniformViewLocation = glGetUniformLocation(shaderProgram, "view")
+    let uniformProjectionLocation = glGetUniformLocation(shaderProgram, "projection")
+    let uniformColorLocation = glGetUniformLocation(shaderProgram, "color")
+
     glUseProgram(shaderProgram)
+    glActiveTexture(GL.TEXTURE0)
+    glBindTexture(GL.TEXTURE_2D, texture)
     glBindVertexArray(VAO)
     //glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
-
-    let uniformTransformLocation = glGetUniformLocation(shaderProgram, "transform")
-    let uniformColorLocation = glGetUniformLocation(shaderProgram, "color")
 
 
     let framesPerSecond = try window.displayMode().refreshRate
@@ -245,7 +295,7 @@ func main() throws {
                     windowSize.width = Int(event.window.data1)
                     windowSize.height = Int(event.window.data2)
                     glViewport(x: 0, y: 0, width: GL.Size(windowSize.width), height: GL.Size(windowSize.height)) //t(0, 0, windowSize.width, windowSize.height)
-                    updateGlobalTransform()
+                    updateProjectionMatrix()
                 }
             case SDL_KEYDOWN:
                 activeKeys[event.key.keysym.sym] = true
@@ -275,7 +325,9 @@ func main() throws {
         glClear(GL.COLOR_BUFFER_BIT)
         
         glUniform4f(uniformColorLocation, 0.0, (Float(sin(Float(totalTime) / 1000 * 1 * Float.pi)) + 1.0) / 2, 0.0, 1.0)
-        try? glUniformMatrix4fv(uniformTransformLocation, 1, false, (globalTransform * rect.transform).transpose().elements)
+        glUniformMatrix4fv(uniformModelLocation, 1, true, rect.transform.elements)
+        glUniformMatrix4fv(uniformViewLocation, 1, true, viewMatrix.elements)
+        glUniformMatrix4fv(uniformProjectionLocation, 1, true, projectionMatrix.elements)
         glDrawElements(mode: GL.TRIANGLES, count: 6, type: GL.UNSIGNED_INT, indices: UnsafeRawPointer(bitPattern: 0))
 
         window.glSwap()

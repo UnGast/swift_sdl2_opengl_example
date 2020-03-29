@@ -1,3 +1,4 @@
+import Foundation
 import GL
 
 protocol Matrix {
@@ -94,7 +95,7 @@ struct TransformationMatrix: Matrix {
     var rows: Int = 4
     var cols: Int = 4
     var elements: [GL.Float]
-    var scale: Vector3 {
+    var scaling: Vector3 {
         didSet {
             recalc()
         }
@@ -104,45 +105,88 @@ struct TransformationMatrix: Matrix {
             recalc()
         }
     }
+    var rotationAxis: Vector3 {
+        didSet {
+            recalc()
+        }
+    }
+    var rotationAngle: Float {
+        didSet {
+            recalc()
+        }
+    }
 
     init() {
-        scale = Vector3([1, 1, 1])
+        scaling = Vector3([1, 1, 1])
         translation = Vector3([0, 0, 0])
         elements = [GL.Float](repeating: 0, count: 16)
+        self.rotationAngle = 0
+        self.rotationAxis = Vector3([0,0,0])
         recalc()
     }
 
     init(_ elements: [GL.Float]) {
-        scale = Vector3([1, 1, 1])
+        scaling = Vector3([1, 1, 1])
         translation = Vector3([0, 0, 0])
+        self.rotationAngle = 0
+        self.rotationAxis = Vector3([0,0,0])
         self.elements = elements
     }
 
-    init(scale: Vector3, translation: Vector3) {
-        self.scale = scale
+    init(
+        scaling: Vector3?, translation: Vector3?, rotationAxis: Vector3?, rotationAngle: Float?) {
+            self.scaling = scaling ?? Vector3([1, 1, 1])
+            self.translation = translation ?? Vector3([0, 0, 0])
+            self.rotationAxis = rotationAxis ?? Vector3([0, 0, 0])
+            self.rotationAngle = rotationAngle ?? 0
+            self.elements = []
+            self.recalc()
+    }
+    /*
+    init(scaling: Vector3, translation: Vector3) {
+        self.scaling = scaling
         self.translation = translation
+        self.rotationAngle = 0
+        self.rotationAxis = Vector3([0,0,0])
         self.elements = []
         recalc()
     }
 
-    init(scale: GL.Float, translation: Vector3) {
-        self.init(scale: Vector3([scale, scale, scale]), translation: translation)
+    init(scaling: GL.Float, translation: Vector3) {
+        self.init(scaling: Vector3([scaling, scaling, scaling]), translation: translation)
     }
 
-    init(scale: GL.Float) {
-        self.init(scale: scale, translation: Vector3([0,0,0]))
+    init(scaling: GL.Float) {
+        self.init(scaling: scaling, translation: Vector3([0,0,0]))
     }
+
+    init(translation: Vector3) {
+        self.init(scaling: 1, translation: translation)
+    }
+
+    /// - Parameters:
+    ///     - rotationAngle: The rotation angle must be specified in degrees.
+    init(rotationAxis: Vector3, rotationAngle: Float) {
+        self.init(scaling: 1, translation: Vector3([0, 0 ,0]))
+        self.rotationAxis = rotationAxis
+        self.rotationAngle = rotationAngle
+    }*/
 
     mutating func recalc() {
+        let ar = rotationAngle / 180 * Float.pi
+        let rc = cos(ar)
+        let rc1 = 1 - rc
+        let rs = sin(ar)
+        let ra = rotationAxis
         elements = [
-            scale[0], 0, 0, translation[0],
-            0, scale[1], 0, translation[1],
-            0, 0, scale[2], translation[2],
+            scaling[0] * (rc + pow(ra[0], 2) * rc1), ra[0] * ra[1] * rc1, ra[0] * ra[2] * rc1 + ra[1] * rs, translation[0],
+            ra[1] * ra[0] * rc1 + ra[2] * rs, scaling[1] * (rc + pow(ra[1], 2) * rc1), ra[1] * ra[2] * rc1 - ra[0] * rs, translation[1],
+            ra[2] * ra[0] * rc1 - ra[1] * rs, ra[2] * ra[1] * rc1 + ra[0] * rs, scaling[2] * (rc + pow(ra[2], 2) * rc1), translation[2],
             0, 0, 0, 1
         ]
     }
 
-    /*mutating func scale (_ factor: Float) {
+    /*mutating func scaling (_ factor: Float) {
         elements = try! (self * TransformationMatrix([
             factor, 0.0, 0.0, 0.0,
             0.0, factor, 0.0, 0.0,
