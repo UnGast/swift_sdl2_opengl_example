@@ -2,6 +2,15 @@
   "object": {
     "pins": [
       {
+        "package": "Path.swift",
+        "repositoryURL": "https://github.com/mxcl/Path.swift.git",
+        "state": {
+          "branch": "master",
+          "revision": "6e99825d9fec1f4363f9e28cf91195eedcf6db95",
+          "version": null
+        }
+      },
+      {
         "package": "GL",
         "repositoryURL": "https://github.com/kelvin13/swift-opengl.git",
         "state": {

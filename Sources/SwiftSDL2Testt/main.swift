@@ -2,6 +2,7 @@ import CSDL2
 import SDL
 import GL
 import Foundation
+import Path
 
 /*print("All Render Drivers:")
 let renderDrivers = SDLRenderer.Driver.all
@@ -28,44 +29,11 @@ if renderDrivers.isEmpty == false {
         }
     }
 }*/
-let vertexShaderSource = """
-#version 330 core
+let vertexSource = try? String(contentsOf: Path.cwd/"Sources/SwiftSDL2Testt/render/defaultShader.vertex")
+print(vertexSource!)
+let fragmentSource = try? String(contentsOf: Path.cwd/"Sources/SwiftSDL2Testt/render/defaultShader.fragment")
 
-layout (location = 0) in vec3 position;
-layout (location = 1) in vec4 inColor;
-layout (location = 2) in vec2 texCoord;
-
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-
-out vec4 fragColor;
-out vec2 TexCoord;
-
-void main()
-{
-    gl_Position = projection * view * model * vec4(position, 1.0);
-    fragColor = inColor;
-    TexCoord = texCoord;
-}
-"""
-
-let fragmentShaderSource = """
-#version 330 core
-
-uniform vec4 color;
-uniform sampler2D inTexture;
-
-in vec4 fragColor;
-in vec2 TexCoord;
-
-out vec4 FragColor;
-
-void main()
-{
-    FragColor = texture(inTexture, TexCoord); // vec4(1.0f, 0.5f, 0.2f, 1.0f);
-}
-"""
+var shader = Shader(vertexSource: vertexSource!, fragmentSource: fragmentSource!)
 
 var windowSize = (width: 600, height: 480)
 
@@ -119,46 +87,7 @@ func main() throws {
 
     glViewport(x: 0, y: 0, width: GL.Size(windowSize.width), height: GL.Size(windowSize.height))
 
-    let vertexShader = glCreateShader(GL.VERTEX_SHADER)
-    withUnsafePointer(to: vertexShaderSource) { ptr in glShaderSource(vertexShader, 1, ptr, nil) }
-    glCompileShader(vertexShader)
-
-    var success = UnsafeMutablePointer<GL.Int>.allocate(capacity: 1)
-    var info = UnsafeMutablePointer<GL.Char>.allocate(capacity: 512)
-    glGetShaderiv(vertexShader, GL.COMPILE_STATUS, success)
-    if (success.pointee == 0) {
-        glGetShaderInfoLog(vertexShader, 512, nil, info)
-        print("Vertex shader info:\n", String(cString: info))
-    } else {
-        print("Vertex shader successfully compiled.")
-    }
-
-    let fragmentShader = glCreateShader(GL.FRAGMENT_SHADER)
-    withUnsafePointer(to: fragmentShaderSource) { ptr in glShaderSource(fragmentShader, 1, ptr, nil) }
-    glCompileShader(fragmentShader)
-    glGetShaderiv(fragmentShader, GL.COMPILE_STATUS, success)
-    if (success.pointee == 0) {
-        glGetShaderInfoLog(fragmentShader, 512, nil, info)
-        print("Fragment shader info:\n", String(cString: info))
-    } else {
-        print("Fragment shader successfully compiled.")
-    }
-
-    let shaderProgram = glCreateProgram()
-    glAttachShader(shaderProgram, vertexShader)
-    glAttachShader(shaderProgram, fragmentShader)
-    glLinkProgram(shaderProgram)
-
-    glGetProgramiv(shaderProgram, GL.LINK_STATUS, success)
-    if (success.pointee == 0) {
-        glGetProgramInfoLog(shaderProgram, 512, nil, info)
-        print("Shader program info:\n", String(cString: info))
-    } else {
-        print("Shader program linked successfully.")
-    }
-
-    glDeleteShader(vertexShader)
-    glDeleteShader(fragmentShader)
+    let test = glCreateProgram()
 
     print("ERROR?: ", glGetError())
 
@@ -227,12 +156,14 @@ func main() throws {
         print("ERROR?: ", glGetError())
     }
 
-    let uniformModelLocation = glGetUniformLocation(shaderProgram, "model")
-    let uniformViewLocation = glGetUniformLocation(shaderProgram, "view")
-    let uniformProjectionLocation = glGetUniformLocation(shaderProgram, "projection")
-    let uniformColorLocation = glGetUniformLocation(shaderProgram, "color")
+    try! shader.compile()
 
-    glUseProgram(shaderProgram)
+    let uniformModelLocation = glGetUniformLocation(shader.id!, "model")
+    let uniformViewLocation = glGetUniformLocation(shader.id!, "view")
+    let uniformProjectionLocation = glGetUniformLocation(shader.id!, "projection")
+    let uniformColorLocation = glGetUniformLocation(shader.id!, "color")
+
+    glUseProgram(shader.id!)
 
     //glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
 
