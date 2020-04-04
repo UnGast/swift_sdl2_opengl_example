@@ -20,6 +20,15 @@
         }
       },
       {
+        "package": "ImGui",
+        "repositoryURL": "https://github.com/ctreffs/SwiftImGui.git",
+        "state": {
+          "branch": null,
+          "revision": "75367d843b95284e6de5b97d904cafb497d7e800",
+          "version": "1.1.2"
+        }
+      },
+      {
         "package": "XML",
         "repositoryURL": "https://github.com/kelvin13/swiftxml",
         "state": {

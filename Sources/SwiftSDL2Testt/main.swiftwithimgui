@@ -1,0 +1,385 @@
+import CSDL2
+import SDL
+import GL
+import Foundation
+import Path
+import ImGui
+
+//IMGUI_CHECKVERSION();
+IMGUI_CHECKVERSION()
+
+//ImGui::CreateContext();
+let ctx = ImGuiCreateContext(nil)
+
+//ImGuiIO& io = ImGui::GetIO();
+let io = ImGuiGetIO()!
+
+/// Build font atlas
+var pixels: UnsafeMutablePointer<UInt8>?
+var width: Int32 = 0
+var height: Int32 = 0
+var bytesPerPixel: Int32 = 0
+// io.Fonts->GetTexDataAsRGBA32(&tex_pixels, &tex_w, &tex_h);
+ImFontAtlas_GetTexDataAsRGBA32(io.pointee.Fonts, &pixels, &width, &height, &bytesPerPixel)
+
+let vertexSource = """
+#version 330 core
+
+//precision mediump float;
+layout (location = 0) in vec2 Position;
+layout (location = 1) in vec2 UV;
+layout (location = 2) in vec4 Color;
+uniform mat4 ProjMtx;
+out vec2 Frag_UV;
+out vec4 Frag_Color;
+void main()
+{
+    //Frag_UV = UV;
+    //Frag_Color = Color;
+    gl_Position = vec4(Position.xy,0,1);//ProjMtx * vec4(Position.xy,0,1);
+}
+"""
+let fragmentSource = """
+#version 330 core
+
+//precision mediump float;
+uniform sampler2D Texture;
+in vec2 Frag_UV;
+in vec4 Frag_Color;
+layout (location = 0) out vec4 Out_Color;
+void main()
+{
+    Out_Color = vec4(1,1,0,1); //Frag_Color * texture(Texture, Frag_UV.st);
+};
+"""
+
+var shader = Shader(vertexSource: vertexSource, fragmentSource: fragmentSource)
+
+var windowSize = (width: 600, height: 480)
+
+func main() throws {
+    
+    var isRunning = true
+    
+    try SDL.initialize(subSystems: [.video])
+    
+    defer { SDL.quit() }
+    
+    let window = try SDLWindow(title: "SDLDemo",
+                               frame: (x: .centered, y: .centered, width: windowSize.width, height: windowSize.height),
+                               options: [.resizable, .shown, .opengl])
+
+    let context = try SDLGLContext(window: window)
+
+    try! shader.compile()
+
+
+
+
+ 
+    /*    glBindBuffer(GL.ARRAY_BUFFER, VBO)
+    glBufferData(GL.ARRAY_BUFFER, entity.vertices.count * MemoryLayout<Vertex>.stride, entity.vertices, GL.STATIC_DRAW)
+
+        if (entity.indices != nil) {
+        glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, EBO)
+        glBufferData(GL.ELEMENT_ARRAY_BUFFER, entity.indices!.count * MemoryLayout<GL.UInt>.stride, entity.indices, GL.STATIC_DRAW)
+    }
+
+    glVertexAttribPointer(
+        index: GL.UInt(0),
+        size: 3,
+        type: GL.FLOAT,
+        normalized: false,
+        stride: GL.Size(MemoryLayout<Vertex>.stride),
+        pointer: UnsafeRawPointer(bitPattern: 0))
+    glEnableVertexAttribArray(0)
+
+    glVertexAttribPointer(
+        index: GL.UInt(1),
+        size: 4,
+        type: GL.FLOAT,
+        normalized: false,
+        stride: GL.Size(MemoryLayout<Vertex>.stride),
+        pointer: UnsafeRawPointer(bitPattern: 3 * MemoryLayout<GL.Float>.stride))
+    glEnableVertexAttribArray(1)
+
+    glVertexAttribPointer(
+        index: GL.UInt(2),
+        size: 2,
+        type: GL.FLOAT,
+        normalized: false,
+        stride: GL.Size(MemoryLayout<Vertex>.stride),
+        pointer: UnsafeRawPointer(bitPattern: 7 * MemoryLayout<GL.Float>.stride))
+    glEnableVertexAttribArray(2)
+
+    var texture = GL.UInt()
+    if (entity.texture != nil) {
+        withUnsafeMutablePointer(to: &texture) { glGenTextures(1, $0) }
+        glBindTexture(GL.TEXTURE_2D, texture)
+        glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.REPEAT)
+        glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.REPEAT)
+        glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
+        glTexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
+        glTexImage2D(GL.TEXTURE_2D, 0, GL.RGB, GL.Size(entity.textureWidth!), GL.Size(entity.textureHeight!), 0, GL.RGB, GL.UNSIGNED_BYTE, entity.texture)
+        glGenerateMipmap(GL.TEXTURE_2D)
+        ///glBindVertexArray(0)
+        //glBindTexture(GL.TEXTURE_2D, 0)
+    }
+
+    var renderObject = EntityRenderObject(vao: VAO, vbo: VBO, ebo: EBO, texture: texture)
+    renderObjects[entity] = renderObject
+
+    print("ERROR?: ", glGetError())
+
+    try! shader.compile()
+
+    let uniformModelLocation = glGetUniformLocation(shader.id!, "model")
+    let uniformViewLocation = glGetUniformLocation(shader.id!, "view")
+    let uniformProjectionLocation = glGetUniformLocation(shader.id!, "projection")
+    let uniformColorLocation = glGetUniformLocation(shader.id!, "color")
+
+    glUseProgram(shader.id!)
+
+    //glPolygonMode(GL.FRONT_AND_BACK, GL.LINE)
+    */
+
+
+
+
+
+
+
+
+    // io.DisplaySize = ImVec2(1920, 1080);
+        io.pointee.DisplaySize = ImVec2(x: Float(windowSize.width), y: Float(windowSize.height))
+        // io.DeltaTime = 1.0f / 60.0f;
+        io.pointee.DeltaTime = 1.0 / 60.0
+        // ImGui::NewFrame();
+        ImGuiNewFrame()
+        
+        var f: Float = 0.0
+        // ImGui::Text("Hello, world!");
+        ImGuiTextV("Hello, world!")
+        // ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
+        ImGuiSliderFloat("float", &f, 0.0, 1.0, "", 1)
+        // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGuiTextV("Application average %.3f ms/frame (%.1f FPS)", 1000.0 / io.pointee.Framerate, io.pointee.Framerate)
+        
+        // ImGui::ShowDemoWindow(NULL);
+        //ImGuiShowDemoWindow(nil)
+        
+        // ImGui::Render();
+        ImGuiRender()
+
+
+
+
+
+    //glEnable(GL.BLEND)
+    //glBlendEquation(GL.FUNC_ADD)
+    //glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
+    //glDisable(GL.CULL_FACE)
+    //glDisable(GL.DEPTH_TEST)
+    //glEnable(GL.SCISSOR_TEST)
+    //glViewport(x: 0, y: 0, width: GL.Size(windowSize.width), height: GL.Size(windowSize.height))
+    print("ERROR?: ", glGetError())
+
+
+
+    //var g_AttribLocationTex = glGetUniformLocation(shader.id!, "Texture");
+    var g_AttribLocationProjMtx = glGetUniformLocation(shader.id!, "ProjMtx");
+    var g_AttribLocationPosition = glGetAttribLocation(shader.id!, "Position");
+    //var g_AttribLocationUV = glGetAttribLocation(shader.id!, "UV");
+    //var g_AttribLocationColor = glGetAttribLocation(shader.id!, "Color");
+
+    var VAO = GL.UInt()
+    withUnsafeMutablePointer(to: &VAO) { glGenVertexArrays(1, $0) }
+    var VBO = GL.UInt()
+    withUnsafeMutablePointer(to: &VBO) { glGenBuffers(1, $0) }
+    var EBO = GL.UInt()
+    withUnsafeMutablePointer(to: &EBO) { glGenBuffers(1, $0) }
+
+    glBindVertexArray(VAO)
+
+
+
+   let imGuiData = ImGuiGetDrawData()!
+    let imGuiCmdLists = imGuiData.pointee.CmdLists
+
+    let fb_width: Float = imGuiData.pointee.DisplaySize.x * imGuiData.pointee.FramebufferScale.x
+    let fb_height: Float = imGuiData.pointee.DisplaySize.y * imGuiData.pointee.FramebufferScale.y
+
+    var L = imGuiData.pointee.DisplayPos.x
+    var R = imGuiData.pointee.DisplayPos.x + imGuiData.pointee.DisplaySize.x
+    var T = imGuiData.pointee.DisplayPos.y
+    var B = imGuiData.pointee.DisplayPos.y + imGuiData.pointee.DisplaySize.y
+    var ortho_projection =
+    [
+        [ 2.0/(R-L),   0.0,         0.0,   0.0 ],
+        [ 0.0,         2.0/(T-B),   0.0,   0.0 ],
+        [ 0.0,         0.0,        -1.0,   0.0 ],
+        [ (R+L)/(L-R),  (T+B)/(B-T),  0.0,   1.0 ],
+    ]
+    glUseProgram(shader.id!);
+    //glUniform1i(g_AttribLocationTex, 0);
+    //glUniformMatrix4fv(g_AttribLocationProjMtx, 1, false, &ortho_projection[0][0]);
+    //glBindSampler(0, 0)
+
+    glBindBuffer(GL.ARRAY_BUFFER, VBO)
+    glEnableVertexAttribArray(GL.UInt(g_AttribLocationPosition))
+    //glEnableVertexAttribArray(GL.UInt(g_AttribLocationUV))
+    //glEnableVertexAttribArray(GL.UInt(g_AttribLocationColor))
+    let offsetPos = UnsafeRawPointer(bitPattern: IM_OFFSETOF(\ImDrawVert.pos))
+    let offsetUv = UnsafeRawPointer(bitPattern: IM_OFFSETOF(\ImDrawVert.uv))
+    let offsetCol = UnsafeRawPointer(bitPattern: IM_OFFSETOF(\ImDrawVert.col))
+    glVertexAttribPointer(0, 2, GL.FLOAT, false, GL.Size(MemoryLayout<GL.Float>.stride * 2), UnsafeRawPointer(bitPattern: 0))
+    //glVertexAttribPointer(GL.UInt(g_AttribLocationUV), 2, GL.FLOAT, false, GL.Size(MemoryLayout<ImDrawVert>.size), offsetUv)
+    //glVertexAttribPointer(GL.UInt(g_AttribLocationColor), 4, GL.UNSIGNED_BYTE, true, GL.Size(MemoryLayout<ImDrawVert>.size), offsetCol)
+
+    let clip_off = imGuiData.pointee.DisplayPos;         // (0,0) unless using multi-viewports
+    let clip_scale = imGuiData.pointee.FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+    
+    //for n in 0..<imGuiData.pointee.CmdListsCount
+    //{
+        //let cmd_list = imGuiData.pointee.CmdLists[Int(n)]!
+        var idx_buffer_offset = 0
+
+        glBindBuffer(GL.ARRAY_BUFFER, VBO)
+        //glBufferData(GL.ARRAY_BUFFER, Int(cmd_list.pointee.VtxBuffer.Size) * MemoryLayout<ImDrawVert>.size, cmd_list.pointee.VtxBuffer.Data, GL.STREAM_DRAW);
+        glBufferData(GL.ARRAY_BUFFER, 2 * 3 * MemoryLayout<GL.Float>.stride, [0, 0.5, 0.5, 0, -0.5, -0.2], GL.STATIC_DRAW)
+        
+        glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, EBO)
+        //glBufferData(GL.ELEMENT_ARRAY_BUFFER, Int(cmd_list.pointee.IdxBuffer.Size) * MemoryLayout<ImDrawIdx>.size, cmd_list.pointee.IdxBuffer.Data, GL.STREAM_DRAW);
+        glBufferData(GL.ELEMENT_ARRAY_BUFFER, 3 * MemoryLayout<GL.UInt>.stride, [GL.UInt](arrayLiteral: 1, 2, 3), GL.STATIC_DRAW)
+
+         
+
+        //glDrawElements(GL.TRIANGLES, GL.Size(3), GL.UNSIGNED_INT, UnsafeRawPointer(bitPattern: 0))
+        /*let cmdBufPtr = UnsafeMutableBufferPointer(start: cmd_list.pointee.CmdBuffer.Data, count: Int(cmd_list.pointee.CmdBuffer.Capacity))
+        for cmd_i in 0..<cmd_list.pointee.CmdBuffer.Size
+        {
+            var pcmd = cmdBufPtr[0]
+
+            if (pcmd.UserCallback != nil) {
+                // User callback (registered via ImDrawList::AddCallback)
+                pcmd.UserCallback(cmd_list, &pcmd)
+            }
+            else {
+                // Project scissor/clipping rectangles into framebuffer space
+                var clip_rect = ImVec4()
+                clip_rect.x = (pcmd.ClipRect.x - clip_off.x) * clip_scale.x;
+                clip_rect.y = (pcmd.ClipRect.y - clip_off.y) * clip_scale.y;
+                clip_rect.z = (pcmd.ClipRect.z - clip_off.x) * clip_scale.x;
+                clip_rect.w = (pcmd.ClipRect.w - clip_off.y) * clip_scale.y;
+
+                if (clip_rect.x < fb_width && clip_rect.y < fb_height && clip_rect.z >= 0.0 && clip_rect.w >= 0.0)
+                {
+                    // Apply scissor/clipping rectangle
+                    //if (clip_origin_lower_left)
+                    //    glScissor((int)clip_rect.x, (int)(fb_height - clip_rect.w), (int)(clip_rect.z - clip_rect.x), (int)(clip_rect.w - clip_rect.y));
+                    //else
+                    glScissor(GL.Int(clip_rect.x), GL.Int(clip_rect.y), GL.Int(clip_rect.z), GL.Int(clip_rect.w)) // Support for GL 4.5's glClipControl(GL_UPPER_LEFT)
+                    // Bind texture, Draw
+                    //print("TEX ID", pcmd.TextureId)
+                    //glBindTexture(GL.TEXTURE_2D, GL.UInt(pcmd.TextureId.load(as: Int.self)))
+                    print(pcmd.ElemCount, MemoryLayout<ImDrawIdx>.size)
+                    glDrawElements(GL.TRIANGLES, GL.Size(pcmd.ElemCount), MemoryLayout<ImDrawIdx>.size == 2 ? GL.UNSIGNED_SHORT : GL.UNSIGNED_INT, UnsafeRawPointer(bitPattern: idx_buffer_offset))
+                }
+            }
+            idx_buffer_offset += Int(pcmd.ElemCount) * MemoryLayout<ImDrawIdx>.size
+        }
+    }*/
+
+        /*for (entity, renderObject) in renderObjects {
+            if (entity.texture == nil) {
+                glBindTexture(GL.TEXTURE_2D, 0)
+            } else {
+                glBindTexture(GL.TEXTURE_2D, renderObject.texture)
+            }
+            glBindVertexArray(renderObject.vao)
+            
+            glUniform4f(uniformColorLocation, 0.0, (Float(sin(Float(totalTime) / 1000 * 1 * Float.pi)) + 1.0) / 2, 0.0, 1.0)
+            glUniformMatrix4fv(uniformModelLocation, 1, true, entity.transform.elements)
+            glUniformMatrix4fv(uniformViewLocation, 1, true, viewMatrix.elements)
+            glUniformMatrix4fv(uniformProjectionLocation, 1, true, projectionMatrix.elements)
+            if (entity.indices == nil) {
+                glDrawArrays(GL.TRIANGLES, 0, GL.Size(entity.vertices.count))
+            } else {
+                glDrawElements(mode: GL.TRIANGLES, count: 6, type: GL.UNSIGNED_INT, indices: UnsafeRawPointer(bitPattern: 0))
+            }
+        }*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    let framesPerSecond = try window.displayMode().refreshRate
+    var frame = 0
+    var lastFrameTime = SDL_GetTicks()
+    var totalTime: UInt32 = 0
+    var event = SDL_Event()
+
+    while isRunning {
+        SDL_PollEvent(&event)
+
+        // increment ticker
+        frame += 1
+        let startTime = SDL_GetTicks()
+        let 𝚫time = startTime - lastFrameTime
+        lastFrameTime = startTime
+        totalTime += 𝚫time
+        let eventType = SDL_EventType(rawValue: event.type)
+
+        switch eventType {
+            case SDL_QUIT, SDL_APP_TERMINATING:
+                isRunning = false
+            case SDL_WINDOWEVENT:
+                if event.window.event == UInt8(SDL_WINDOWEVENT_SIZE_CHANGED.rawValue) {
+                    windowSize.width = Int(event.window.data1)
+                    windowSize.height = Int(event.window.data2)
+                    glViewport(x: 0, y: 0, width: GL.Size(windowSize.width / 2), height: GL.Size(windowSize.height / 2)) //t(0, 0, windowSize.width, windowSize.height)
+                    //updateProjectionMatrix()
+                }
+            /*case SDL_KEYDOWN:
+                activeKeys[event.key.keysym.sym] = true
+            case SDL_KEYUP:
+                activeKeys[event.key.keysym.sym] = false*/
+            default:
+                break
+        }
+
+        glClearColor(0.2, 0.3, 0.3, 1.0)
+        glClear(GL.COLOR_BUFFER_BIT)
+
+        glDrawArrays(GL.TRIANGLES, 0, GL.Size(3))
+        
+        window.glSwap()
+
+        let frameDuration = SDL_GetTicks() - startTime
+        if frameDuration < 1000 / UInt32(framesPerSecond) {
+           SDL_Delay((1000 / UInt32(framesPerSecond)) - frameDuration)
+        //}
+        }
+    }
+
+    ImGuiDestroyContext(ctx)
+}
+
+do { try main() }
+catch let error as SDLError {
+    print("Error: \(error.debugDescription)")
+    exit(EXIT_FAILURE)
+}
+catch {
+    print("Error: \(error)")
+    exit(EXIT_FAILURE)
+}
